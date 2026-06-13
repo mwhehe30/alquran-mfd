@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 const AudioContext = createContext();
 
@@ -27,8 +27,8 @@ export const AudioProvider = ({ children }) => {
   useEffect(() => {
     if (typeof window !== "undefined") {
       audioRef.current = new Audio();
-      audioRef.current.volume = volume;
-      audioRef.current.muted = muted;
+      audioRef.current.volume = 1;
+      audioRef.current.muted = false;
     }
 
     return () => {
@@ -38,6 +38,38 @@ export const AudioProvider = ({ children }) => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume;
+  }, [volume]);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.muted = muted;
+  }, [muted]);
+
+  const playSurah = useCallback((surahData, index) => {
+    const audio = audioRef.current;
+    if (!audio || !surahData?.audio) return;
+
+    if (currentAudio === index && currentSurah?.nomor === surahData.nomor) {
+      if (isPlaying) audio.pause();
+      else audio.play().catch(console.error);
+      return;
+    }
+
+    audio.src = surahData.audio;
+    audio.load();
+    setCurrentAudio(index);
+    setCurrentSurah(surahData);
+    setShowAudioMenu(true);
+    audio.play().catch(console.error);
+  }, [currentAudio, currentSurah, isPlaying]);
+
+  const playNext = useCallback(() => {
+    if (currentAudio !== null && currentAudio < surahList.length - 1) {
+      playSurah(surahList[currentAudio + 1], currentAudio + 1);
+    }
+  }, [currentAudio, playSurah, surahList]);
 
   // Audio event listeners
   useEffect(() => {
@@ -77,30 +109,7 @@ export const AudioProvider = ({ children }) => {
       audio.removeEventListener("play", handlePlay);
       audio.removeEventListener("pause", handlePause);
     };
-  }, [currentAudio, surahList.length]);
-
-  const playSurah = (surahData, index) => {
-    const audio = audioRef.current;
-    if (!audio || !surahData) return;
-
-    // If same surah is clicked, toggle play/pause
-    if (currentAudio === index && currentSurah?.nomor === surahData.nomor) {
-      if (isPlaying) {
-        audio.pause();
-      } else {
-        audio.play();
-      }
-      return;
-    }
-
-    // Load new surah
-    audio.src = surahData.audio;
-    audio.load();
-    setCurrentAudio(index);
-    setCurrentSurah(surahData);
-    setShowAudioMenu(true);
-    audio.play().catch(console.error);
-  };
+  }, [currentAudio, playNext, surahList.length]);
 
   const pauseAudio = () => {
     if (audioRef.current) {
@@ -143,13 +152,6 @@ export const AudioProvider = ({ children }) => {
     }
   };
 
-  const playNext = () => {
-    if (currentAudio < surahList.length - 1 && surahList.length > 0) {
-      const nextSurah = surahList[currentAudio + 1];
-      playSurah(nextSurah, currentAudio + 1);
-    }
-  };
-
   const stopAudio = () => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -162,9 +164,9 @@ export const AudioProvider = ({ children }) => {
     setProgress(0);
   };
 
-  const setSurahData = (surahData) => {
+  const setSurahData = useCallback((surahData) => {
     setSurahList(surahData);
-  };
+  }, []);
 
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60);

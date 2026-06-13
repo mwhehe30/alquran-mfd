@@ -1,103 +1,67 @@
 "use client";
 
 import ButtonBack from "@/components/button-back";
+import { CardSkeleton, ErrorState } from "@/components/data-state";
 import { getDoa } from "@/lib/api";
-import { useEffect, useState } from "react";
+import { BookHeart } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
-const Page = () => {
+export default function Page() {
   const [doa, setDoa] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
-  useEffect(() => {
-    const fetchDoa = async () => {
-      try {
-        setIsLoading(true);
-        const res = await getDoa();
-        setDoa(res);
-      } catch (error) {
-        console.error("Error fetching doa:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchDoa();
+  const loadDoa = useCallback(async () => {
+    setIsLoading(true);
+    setHasError(false);
+    const data = await getDoa();
+    setDoa(data);
+    setHasError(!data.length);
+    setIsLoading(false);
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-500 text-sm mt-1">Mohon tunggu sebentar</p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => { loadDoa(); }, [loadDoa]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 p-6">
-      <ButtonBack />
+    <main className="min-h-screen px-5 pb-8 pt-5">
+      <div className="mb-4"><ButtonBack /></div>
+      <section className="ornament mb-5 rounded-[30px] bg-[#0a4b3e] px-6 py-7 text-white">
+        <BookHeart className="mb-8 size-7 text-[#e6c775]" />
+        <p className="text-xs font-semibold uppercase tracking-[.18em] text-emerald-100/70">Dekatkan hati</p>
+        <h1 className="mt-2 text-3xl font-bold">Doa Harian</h1>
+        <p className="mt-2 text-sm text-emerald-50/70">Kumpulan doa untuk menemani keseharian.</p>
+      </section>
 
-      <div className="space-y-6">
-        {doa.map((item, index) => (
-          <div
-            key={item.id}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
-          >
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
-                    <span className="text-white font-bold text-lg">
-                      {index + 1}
-                    </span>
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900 group-hover:text-green-600 transition-colors duration-200">
-                      {item.judul}
-                    </h2>
-                    <p className="text-sm text-gray-500">Doa ke-{index + 1}</p>
-                  </div>
+      {isLoading ? (
+        <CardSkeleton count={4} />
+      ) : hasError ? (
+        <ErrorState message="Kumpulan doa gagal dimuat dari server." onRetry={loadDoa} />
+      ) : (
+        <div className="space-y-3">
+          {doa.map((item, index) => (
+            <article key={item.id ?? index} className="rounded-[26px] border border-[#17382f]/8 bg-white/75 p-5 shadow-[0_8px_26px_rgba(23,56,47,.05)]">
+              <div className="mb-5 flex items-center gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#edf4f0] text-sm font-bold text-[#0f6b56]">{index + 1}</span>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#d09c35]">Doa pilihan</p>
+                  <h2 className="mt-0.5 font-bold">{item.judul}</h2>
                 </div>
               </div>
-
-              <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-2xl p-6 mb-6 border-r-4 border-green-500">
-                <div
-                  dir="rtl"
-                  className="text-2xl md:text-3xl leading-loose text-right font-arabic text-gray-800 tracking-wide"
-                >
-                  {item.arab}
-                </div>
+              <p dir="rtl" lang="ar" className="arabic-text rounded-[22px] bg-[#f3f0e7] px-5 py-6 text-right text-[25px] text-[#17382f]">
+                {item.arab}
+              </p>
+              <div className="mt-4 border-l-2 border-[#d7a94a] pl-4">
+                <p className="text-xs font-bold uppercase tracking-[.12em] text-[#b7801d]">Latin</p>
+                <p className="mt-2 text-sm italic leading-6 text-[#53645c]">{item.latin}</p>
               </div>
-
-              <div className="mb-4 p-4 bg-emerald-50 rounded-xl border-l-4 border-emerald-500">
-                <div className="flex items-center space-x-2 mb-2">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                  <span className="text-sm font-medium text-emerald-800">
-                    Bacaan (Latin)
-                  </span>
-                </div>
-                <p className="font-medium text-emerald-800 tracking-wider italic leading-relaxed">
-                  {item.latin}
-                </p>
+              <div className="mt-4 rounded-2xl bg-[#edf4f0] p-4">
+                <p className="text-xs font-bold uppercase tracking-[.12em] text-[#0f6b56]">Artinya</p>
+                <p className="mt-2 text-sm leading-6 text-[#53645c]">{item.terjemah}</p>
               </div>
-
-              <div className="p-4 bg-blue-50 rounded-xl border-l-4 border-blue-500">
-                <div className="flex items-center space-x-2 mb-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm font-medium text-blue-800">
-                    Artinya
-                  </span>
-                </div>
-                <p className="text-gray-700 leading-relaxed">
-                  &quot;{item.terjemah}&quot;
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </main>
   );
-};
-
-export default Page;
+}

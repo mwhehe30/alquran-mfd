@@ -19,12 +19,15 @@ const GlobalAudioPlayer = () => {
     progress,
     duration,
     muted,
+    volume,
     surahList,
     pauseAudio,
     resumeAudio,
     playPrevious,
     playNext,
     toggleMute,
+    handleVolumeChange,
+    handleProgressChange,
     stopAudio,
     formatTime,
   } = useAudio();
@@ -42,8 +45,8 @@ const GlobalAudioPlayer = () => {
   };
 
   return (
-    <div className="fixed bottom-18 left-0 right-0 bg-white border-t border-gray-200 py-3 px-4 z-50 max-w-md mx-auto">
-      <div className="max-w-md mx-auto flex items-center justify-between">
+    <div className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-24px)] max-w-[496px] -translate-x-1/2 px-3">
+      <div className="soft-card mx-auto flex items-center justify-between rounded-[24px] p-3">
         <div className="flex items-center flex-1">
           {/* Previous Button */}
           <button
@@ -61,7 +64,7 @@ const GlobalAudioPlayer = () => {
           {/* Play/Pause Button */}
           <button
             onClick={handlePlayPause}
-            className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center mx-3 hover:bg-green-600 transition-colors"
+            className="w-10 h-10 rounded-full bg-[#0f6b56] text-white flex items-center justify-center mx-2"
           >
             {isPlaying ? (
               <Pause className="w-5 h-5" />
@@ -85,22 +88,22 @@ const GlobalAudioPlayer = () => {
 
           {/* Surah Info */}
           <div className="ml-4 flex-1 min-w-0">
-            <div className="text-sm font-medium text-gray-800 truncate">
+            <div className="text-sm font-bold text-[#17382f] truncate">
               {currentSurah.nama_latin}
             </div>
             <div className="text-xs text-gray-500 truncate">
               {currentSurah.nama}
             </div>
 
-            {/* Progress Bar */}
-            <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-              <div
-                className="bg-green-500 h-1.5 rounded-full transition-all duration-150"
-                style={{
-                  width: `${duration ? (progress / duration) * 100 : 0}%`,
-                }}
-              ></div>
-            </div>
+            <input
+              type="range"
+              min="0"
+              max={duration || 0}
+              value={Math.min(progress, duration || 0)}
+              onChange={(event) => handleProgressChange(Number(event.target.value))}
+              className="mt-2 h-1.5 w-full cursor-pointer accent-[#d09c35]"
+              aria-label="Posisi audio"
+            />
           </div>
         </div>
 
@@ -122,6 +125,16 @@ const GlobalAudioPlayer = () => {
               <Volume2 className="w-4 h-4" />
             )}
           </button>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={muted ? 0 : volume}
+            onChange={(event) => handleVolumeChange(Number(event.target.value))}
+            className="hidden w-16 accent-[#0f6b56] sm:block"
+            aria-label="Volume audio"
+          />
 
           {/* Close Button */}
           <button

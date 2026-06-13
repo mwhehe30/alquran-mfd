@@ -50,13 +50,13 @@ export const SurahNavigation = ({ surah, detailSurah }) => {
 
   return (
     <div
-      className="sticky top-0 left-0 right-0 p-3 bg-transparent z-20"
+      className="sticky top-0 left-0 right-0 z-30 py-3"
       ref={dropdownRef}
     >
       {/* Trigger */}
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="flex w-full items-center justify-between rounded-[22px] border border-[#17382f]/8 bg-white/95 px-4 py-3 text-sm font-bold text-[#17382f] shadow-[0_8px_26px_rgba(23,56,47,.05)] backdrop-blur"
       >
         {selected
           ? `${selected.nomor}. ${selected.nama_latin || ""}`
@@ -66,7 +66,7 @@ export const SurahNavigation = ({ surah, detailSurah }) => {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute mt-2 w-full rounded-lg border border-gray-200 bg-white shadow-lg z-30">
+        <div className="absolute left-0 right-0 z-30 mt-2 overflow-hidden rounded-[22px] border border-[#17382f]/10 bg-white shadow-2xl">
           {/* Input search */}
           <div className="p-2">
             <input
@@ -74,7 +74,7 @@ export const SurahNavigation = ({ surah, detailSurah }) => {
               placeholder="Cari surah..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full px-3 py-2 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full rounded-2xl border border-[#17382f]/10 bg-[#f7f5ee] px-4 py-3 text-sm outline-none"
             />
           </div>
 
@@ -85,9 +85,9 @@ export const SurahNavigation = ({ surah, detailSurah }) => {
                 <li
                   key={s.nomor}
                   onClick={() => handleSelect(s)}
-                  className={`px-4 py-2 cursor-pointer hover:bg-green-100 ${
+                  className={`cursor-pointer px-4 py-3 text-sm hover:bg-[#edf4f0] ${
                     selected?.nomor === s.nomor
-                      ? "bg-green-50 font-semibold"
+                      ? "bg-[#edf4f0] font-bold text-[#0f6b56]"
                       : ""
                   }`}
                 >

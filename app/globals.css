@@ -4,8 +4,14 @@
 @plugin 'tailwind-scrollbar';
 
 :root {
-  --arabic: Scheherazade New, serif;
-  --latin: Inter, sans-serif;
+  --arabic: "Scheherazade New", serif;
+  --latin: "Inter", sans-serif;
+  --ink: #17382f;
+  --muted: #718078;
+  --cream: #f7f5ee;
+  --emerald: #0f6b56;
+  --emerald-dark: #0a4b3e;
+  --gold: #d7a94a;
 }
 
 @theme inline {
@@ -15,4 +21,66 @@
 
 body {
   font-family: var(--font-latin);
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(215, 169, 74, 0.13), transparent 28rem),
+    radial-gradient(circle at 100% 18%, rgba(15, 107, 86, 0.12), transparent 24rem),
+    var(--cream);
+  min-height: 100vh;
+}
+
+* {
+  border-color: rgba(23, 56, 47, 0.1);
+}
+
+::selection {
+  color: white;
+  background: var(--emerald);
+}
+
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid rgba(215, 169, 74, 0.55);
+  outline-offset: 2px;
+}
+
+.app-surface {
+  background:
+    linear-gradient(rgba(247, 245, 238, 0.93), rgba(247, 245, 238, 0.98)),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 18px,
+      rgba(15, 107, 86, 0.025) 18px,
+      rgba(15, 107, 86, 0.025) 19px
+    );
+}
+
+.arabic-text {
+  font-family: var(--font-arabic);
+  line-height: 2.15;
+}
+
+.soft-card {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(23, 56, 47, 0.09);
+  box-shadow: 0 12px 40px rgba(23, 56, 47, 0.07);
+  backdrop-filter: blur(14px);
+}
+
+.ornament {
+  background-image:
+    linear-gradient(45deg, rgba(255,255,255,.05) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,.05) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255,255,255,.05) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,.05) 75%);
+  background-size: 24px 24px;
+  background-position: 0 0, 0 12px, 12px -12px, -12px 0;
 }

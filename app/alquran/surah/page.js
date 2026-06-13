@@ -1,16 +1,11 @@
 import BottomNavigation from "@/components/bottom-navigation";
 import ListSurah from "@/components/list-surah";
-import Link from "next/link";
+import ButtonBack from "@/components/button-back";
 
 const page = () => {
   return (
-    <div className="min-h-screen">
-      <Link
-        href="/"
-        className="px-4 py-2 bg-green-600 text-white rounded-xl shadow hover:bg-green-700 transition"
-      >
-        <span className="font-medium">Kembali</span>
-      </Link>
+    <div className="min-h-screen pt-5">
+      <div className="mb-4 px-5"><ButtonBack /></div>
       <ListSurah />
       <BottomNavigation />
     </div>

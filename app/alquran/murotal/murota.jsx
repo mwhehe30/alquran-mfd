@@ -1,90 +1,75 @@
 "use client";
 import { useAudio } from "@/context/audio-context";
+import { CardSkeleton, ErrorState } from "@/components/data-state";
 import { getSurah } from "@/lib/api";
-import { Pause, Play, Volume2, VolumeX } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Headphones, Pause, Play } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 const Murota = () => {
   const [surah, setSurah] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   const {
     currentAudio,
     isPlaying,
-    muted,
     progress,
     duration,
     playSurah,
-    toggleMute,
+    handleProgressChange,
     setSurahData,
   } = useAudio();
 
-  useEffect(() => {
-    const fetchSurah = async () => {
-      try {
-        const res = await getSurah();
-        setSurah(res);
-        setSurahData(res);
-      } catch (err) {
-        console.error("Failed to fetch surah:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSurah();
+  const fetchSurah = useCallback(async () => {
+    setLoading(true);
+    setHasError(false);
+    const data = await getSurah();
+    setSurah(data);
+    setSurahData(data);
+    setHasError(!data.length);
+    setLoading(false);
   }, [setSurahData]);
+
+  useEffect(() => { fetchSurah(); }, [fetchSurah]);
 
   const handlePlay = (index) => {
     const surahData = surah[index];
     playSurah(surahData, index);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-lg font-medium text-gray-700">
-            Memuat daftar surah...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4 pb-32">
-      <div className="max-w-4xl mx-auto">
-        <header className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-green-800 mb-1">
-            Murottal Al-Qur'an
-          </h1>
-          <p className="text-gray-600 text-sm">
-            Dengarkan bacaan Al-Qur'an dari setiap surah
-          </p>
+    <div className="min-h-screen px-5 pb-32 pt-6">
+      <div>
+        <header className="ornament mb-5 rounded-[30px] bg-[#0a4b3e] px-6 py-7 text-white">
+          <Headphones className="mb-8 size-7 text-[#e6c775]" />
+          <p className="text-xs font-semibold uppercase tracking-[.18em] text-emerald-100/70">Temani harimu</p>
+          <h1 className="mt-2 text-3xl font-bold">Murotal Al-Qur&apos;an</h1>
+          <p className="mt-2 text-sm text-emerald-50/70">Dengarkan tilawah dari setiap surah.</p>
         </header>
 
-        <div className="space-y-3">
+        {loading ? <CardSkeleton count={6} /> : hasError ? (
+          <ErrorState message="Daftar murotal gagal dimuat." onRetry={fetchSurah} />
+        ) : <div className="space-y-2.5">
           {surah.map((s, index) => (
             <div
               key={s.nomor}
-              className={`bg-white rounded-lg shadow-sm overflow-hidden transition-all duration-300 border ${
+              className={`rounded-[22px] p-4 shadow-[0_8px_26px_rgba(23,56,47,.045)] transition border ${
                 currentAudio === index
-                  ? "border-green-500 ring-1 ring-green-200"
-                  : "border-gray-100"
+                  ? "border-[#0f6b56]/30 bg-[#edf4f0]"
+                  : "border-[#17382f]/8 bg-white/75"
               }`}
             >
-              <div className="p-3">
+              <div>
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center">
-                    <div className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium mr-3">
+                    <div className="flex size-10 items-center justify-center rounded-2xl bg-[#edf4f0] text-xs font-bold text-[#0f6b56] mr-3">
                       {s.nomor}
                     </div>
                     <div>
-                      <h2 className="text-base font-bold text-gray-800">
+                      <h2 className="text-base font-bold text-[#17382f]">
                         {s.nama_latin}
                       </h2>
-                      <p className="text-sm text-green-700">{s.nama}</p>
+                      <p className="font-arabic text-lg text-[#0f6b56]">{s.nama}</p>
                     </div>
                   </div>
 
@@ -92,9 +77,9 @@ const Murota = () => {
                     onClick={() => handlePlay(index)}
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
                       currentAudio === index && isPlaying
-                        ? "bg-red-500 hover:bg-red-600"
-                        : "bg-green-500 hover:bg-green-600"
-                    } text-white shadow-sm hover:shadow-md`}
+                        ? "bg-[#d09c35]"
+                        : "bg-[#0f6b56]"
+                    } text-white shadow-sm`}
                   >
                     {currentAudio === index && isPlaying ? (
                       <Pause className="w-4 h-4" />
@@ -104,41 +89,29 @@ const Murota = () => {
                   </button>
                 </div>
 
-                <div className="flex justify-between text-xs text-gray-500 mb-3">
+                <div className="flex justify-between text-xs text-[#718078] mb-3">
                   <span className="italic">{s.arti}</span>
                   <span className="font-medium">{s.jumlah_ayat} ayat</span>
                 </div>
 
                 <div className="flex items-center">
                   <div className="flex-1 mr-3">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-green-500 h-2 rounded-full transition-all duration-150"
-                        style={{
-                          width:
-                            currentAudio === index && duration > 0
-                              ? `${(progress / duration) * 100}%`
-                              : "0%",
-                        }}
-                      ></div>
-                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max={currentAudio === index ? duration || 0 : 0}
+                      value={currentAudio === index ? Math.min(progress, duration || 0) : 0}
+                      onChange={(event) => handleProgressChange(Number(event.target.value))}
+                      disabled={currentAudio !== index}
+                      className="h-1.5 w-full accent-[#d09c35] disabled:opacity-50"
+                      aria-label={`Posisi audio ${s.nama_latin}`}
+                    />
                   </div>
-
-                  <button
-                    onClick={toggleMute}
-                    className="text-gray-400 hover:text-gray-600 p-1"
-                  >
-                    {muted ? (
-                      <VolumeX className="w-4 h-4" />
-                    ) : (
-                      <Volume2 className="w-4 h-4" />
-                    )}
-                  </button>
                 </div>
               </div>
             </div>
           ))}
-        </div>
+        </div>}
       </div>
     </div>
   );

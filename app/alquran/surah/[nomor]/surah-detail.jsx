@@ -1,13 +1,28 @@
 "use client";
 
 import { SurahNavigation } from "@/components/surah-navigation";
+import { ErrorState } from "@/components/data-state";
+import Toast from "@/components/toast";
 import { juzAlquran } from "@/data/data-juz";
 import { getDetailSurah } from "@/lib/api";
 import { useMarksStore } from "@/store/marks-store";
 import { useTabStore } from "@/store/tab-store";
 import HTMLReactParser from "html-react-parser";
-import { Bookmark, Calendar, FileText, MapPin, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  Bookmark,
+  BookOpen,
+  Calendar,
+  Copy,
+  FileText,
+  MapPin,
+  Minus,
+  Pause,
+  Play,
+  Plus,
+  Search,
+  Share2,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const SurahDetail = ({ surah, nomor }) => {
   const marks = useMarksStore((state) => state.marks);
@@ -18,15 +33,35 @@ const SurahDetail = ({ surah, nomor }) => {
 
   const [detailSurah, setDetailSurah] = useState(null);
   const [targetAyat, setTargetAyat] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [arabicSize, setArabicSize] = useState(29);
+  const [playingAyat, setPlayingAyat] = useState(null);
+  const [toast, setToast] = useState("");
+  const audioRef = useRef(null);
+  const toastTimerRef = useRef(null);
 
-  useEffect(() => {
-    const fetchDetail = async () => {
-      setDetailSurah(null);
-      const data = await getDetailSurah(nomor);
-      setDetailSurah(data);
-    };
-    fetchDetail();
+  const showToast = useCallback((message) => {
+    setToast(message);
+    clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(""), 2200);
+  }, []);
+
+  const fetchDetail = useCallback(async () => {
+    setIsLoading(true);
+    setHasError(false);
+    const data = await getDetailSurah(nomor);
+    setDetailSurah(data);
+    setHasError(!data);
+    setIsLoading(false);
   }, [nomor]);
+
+  useEffect(() => { fetchDetail(); }, [fetchDetail]);
+
+  useEffect(() => () => {
+    clearTimeout(toastTimerRef.current);
+    audioRef.current?.pause();
+  }, []);
 
   useEffect(() => {
     if (activeTab !== "ayat" || !detailSurah) return;
@@ -57,80 +92,138 @@ const SurahDetail = ({ surah, nomor }) => {
     }
   };
 
-  if (!detailSurah)
+  const handleAyatAudio = (ayat) => {
+    if (!ayat.audio) {
+      showToast("Audio ayat tidak tersedia");
+      return;
+    }
+
+    if (playingAyat === ayat.nomor && audioRef.current) {
+      audioRef.current.pause();
+      setPlayingAyat(null);
+      return;
+    }
+
+    audioRef.current?.pause();
+    const audio = new Audio(ayat.audio);
+    audioRef.current = audio;
+    setPlayingAyat(ayat.nomor);
+    audio.play().catch(() => showToast("Audio gagal diputar"));
+    audio.addEventListener("ended", () => setPlayingAyat(null), { once: true });
+  };
+
+  const getAyatText = (ayat) =>
+    `${detailSurah.nama_latin} ayat ${ayat.nomor}\n\n${ayat.ar}\n\n${ayat.idn}`;
+
+  const handleCopy = async (ayat) => {
+    try {
+      await navigator.clipboard.writeText(getAyatText(ayat));
+      showToast("Ayat berhasil disalin");
+    } catch {
+      showToast("Ayat gagal disalin");
+    }
+  };
+
+  const handleShare = async (ayat) => {
+    const shareData = {
+      title: `${detailSurah.nama_latin} ayat ${ayat.nomor}`,
+      text: getAyatText(ayat),
+      url: `${window.location.origin}/alquran/surah/${detailSurah.nomor}#ayat-${ayat.nomor}`,
+    };
+
+    if (navigator.share) {
+      await navigator.share(shareData).catch(() => {});
+    } else {
+      await navigator.clipboard.writeText(`${shareData.text}\n\n${shareData.url}`);
+      showToast("Tautan ayat berhasil disalin");
+    }
+  };
+
+  if (isLoading)
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 p-4">
+      <div className="min-h-screen px-5 py-5">
         <SurahNavigation surah={surah} detailSurah={{ nomor: Number(nomor) }} />
-        <div className="flex items-center justify-center mt-20">
-          <div className="text-center">
-            <div className="w-12 h-12 bg-green-200 rounded-full animate-pulse mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading surah...</p>
-          </div>
+        <div className="mt-4 rounded-[26px] border border-[#17382f]/8 bg-white/75 p-10 text-center shadow-[0_8px_26px_rgba(23,56,47,.05)]">
+          <div className="mx-auto mb-4 size-10 animate-pulse rounded-2xl bg-[#dbe9e3]" />
+          <p className="text-sm text-[#718078]">Memuat surah...</p>
         </div>
       </div>
     );
+
+  if (hasError || !detailSurah) {
+    return (
+      <div className="min-h-screen px-5 py-5">
+        <SurahNavigation surah={surah} detailSurah={{ nomor: Number(nomor) }} />
+        <ErrorState message="Detail surah gagal dimuat. Periksa koneksi lalu coba kembali." onRetry={fetchDetail} />
+      </div>
+    );
+  }
 
   const tabs = [
     {
       key: "info",
       label: "Info",
       content: (
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-8 text-white">
-              <div className="text-center">
-                <h1 className="text-3xl md:text-4xl font-bold mb-2">
+        <div>
+          <div className="overflow-hidden rounded-[30px] border border-[#17382f]/8 bg-white/75 shadow-[0_8px_26px_rgba(23,56,47,.05)]">
+            <div className="ornament rounded-b-[30px] bg-[#0a4b3e] px-6 py-8 text-white">
+              <BookOpen className="mb-8 size-6 text-[#e6c775]" />
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-[.18em] text-[#e6c775]">
+                  Surah ke-{detailSurah.nomor}
+                </p>
+                <h1 className="text-3xl font-bold">
                   {detailSurah.nama_latin}
                 </h1>
-                <h2 className="text-2xl md:text-3xl font-arabic mb-4">
+                <h2 dir="rtl" className="arabic-text mt-4 text-right text-4xl font-semibold">
                   {detailSurah.nama}
                 </h2>
-                <p className="text-green-100 text-lg italic">
-                  &quot;{detailSurah.arti}&quot;
+                <p className="mt-4 border-t border-white/15 pt-4 text-sm text-emerald-50/75">
+                  {detailSurah.arti}
                 </p>
               </div>
             </div>
 
-            <div className="p-6">
-              <div className="grid gap-6 mb-8">
-                <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-xl">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-blue-600" />
+            <div className="p-5">
+              <div className="mb-6 grid grid-cols-1 gap-2">
+                <div className="flex items-center gap-3 rounded-2xl border border-[#17382f]/8 bg-[#f7f5ee] p-4">
+                  <div className="flex size-10 items-center justify-center rounded-2xl bg-[#e5eee9]">
+                    <MapPin className="size-5 text-[#0f6b56]" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Tempat Turun</p>
-                    <p className="font-semibold text-gray-900">
+                    <p className="text-xs text-[#718078]">Tempat turun</p>
+                    <p className="font-bold text-[#17382f]">
                       {detailSurah.tempat_turun}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-xl">
-                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-purple-600" />
+                <div className="flex items-center gap-3 rounded-2xl border border-[#17382f]/8 bg-[#f7f5ee] p-4">
+                  <div className="flex size-10 items-center justify-center rounded-2xl bg-[#e5eee9]">
+                    <FileText className="size-5 text-[#0f6b56]" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Jumlah Ayat</p>
-                    <p className="font-semibold text-gray-900">
+                    <p className="text-xs text-[#718078]">Jumlah ayat</p>
+                    <p className="font-bold text-[#17382f]">
                       {detailSurah.jumlah_ayat} ayat
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-xl">
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Calendar className="w-5 h-5 text-green-600" />
+                <div className="flex items-center gap-3 rounded-2xl border border-[#17382f]/8 bg-[#f7f5ee] p-4">
+                  <div className="flex size-10 items-center justify-center rounded-2xl bg-[#e5eee9]">
+                    <Calendar className="size-5 text-[#0f6b56]" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Urutan</p>
-                    <p className="font-semibold text-gray-900">
+                    <p className="text-xs text-[#718078]">Urutan</p>
+                    <p className="font-bold text-[#17382f]">
                       Surah ke-{detailSurah.nomor}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed">
+              <div className="rounded-2xl bg-[#edf4f0] p-5 text-sm leading-7 text-[#53645c] [&_i]:text-[#0f6b56]">
                 {HTMLReactParser(detailSurah.deskripsi)}
               </div>
             </div>
@@ -142,12 +235,12 @@ const SurahDetail = ({ surah, nomor }) => {
       key: "ayat",
       label: "Ayat",
       content: (
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="space-y-4">
           {/* Search Box */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="rounded-[26px] border border-[#17382f]/8 bg-white/75 p-4 shadow-[0_8px_26px_rgba(23,56,47,.05)]">
             <div className="flex gap-3 items-center">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Search className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-[#718078]" />
                 <input
                   type="number"
                   placeholder="Cari nomor ayat..."
@@ -156,7 +249,7 @@ const SurahDetail = ({ surah, nomor }) => {
                   max={detailSurah.jumlah_ayat}
                   onChange={(e) => setTargetAyat(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleGoToAyat()}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                  className="w-full rounded-2xl border border-[#17382f]/15 bg-[#f7f5ee] py-3 pl-10 pr-4 text-sm outline-none focus:border-[#0f6b56]"
                 />
               </div>
               <button
@@ -166,21 +259,41 @@ const SurahDetail = ({ surah, nomor }) => {
                   Number(targetAyat) < 1 ||
                   Number(targetAyat) > detailSurah.jumlah_ayat
                 }
-                className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
+                className={`rounded-2xl px-5 py-3 text-sm font-bold transition ${
                   !targetAyat ||
                   Number(targetAyat) < 1 ||
                   Number(targetAyat) > detailSurah.jumlah_ayat
-                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                    : "bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                    ? "cursor-not-allowed bg-[#e5e7e5] text-[#8a948f]"
+                    : "bg-[#0f6b56] text-white hover:bg-[#0a4b3e]"
                 }`}
               >
                 Pergi
               </button>
             </div>
+            <div className="mt-3 flex items-center justify-between border-t border-[#17382f]/8 pt-3">
+              <span className="text-xs font-bold text-[#718078]">Ukuran teks Arab</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setArabicSize((size) => Math.max(23, size - 2))}
+                  className="flex size-9 items-center justify-center rounded-xl bg-[#edf4f0] text-[#0f6b56]"
+                  aria-label="Perkecil teks Arab"
+                >
+                  <Minus className="size-4" />
+                </button>
+                <span className="w-8 text-center text-xs font-bold">{arabicSize}</span>
+                <button
+                  onClick={() => setArabicSize((size) => Math.min(41, size + 2))}
+                  className="flex size-9 items-center justify-center rounded-xl bg-[#edf4f0] text-[#0f6b56]"
+                  aria-label="Perbesar teks Arab"
+                >
+                  <Plus className="size-4" />
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* list ayat */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             {detailSurah.ayat.map((s) => {
               const isMarked = marks.some(
                 (m) =>
@@ -194,20 +307,20 @@ const SurahDetail = ({ surah, nomor }) => {
               );
 
               return (
-                <div key={s.id} id={`ayat-${s.nomor}`} className="space-y-4">
+                <div key={s.id} id={`ayat-${s.nomor}`} className="scroll-mt-36 space-y-2">
                   {juzAwal && (
-                    <div className="bg-gradient-to-r from-yellow-100 to-amber-50 border border-yellow-200 rounded-2xl p-4 shadow-sm">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-yellow-500 rounded-xl flex items-center justify-center">
-                          <span className="text-white font-bold text-sm">
+                    <div className="rounded-[22px] border border-[#d7a94a]/45 bg-[#f8f0dc] p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-10 items-center justify-center rounded-2xl bg-[#d7a94a]">
+                          <span className="text-sm font-bold text-[#17382f]">
                             {juzAwal.juz}
                           </span>
                         </div>
                         <div>
-                          <p className="font-semibold text-yellow-800">
+                          <p className="font-bold text-[#8d6618]">
                             Awal Juz {juzAwal.juz}
                           </p>
-                          <p className="text-yellow-700 text-sm">
+                          <p className="text-sm text-[#9d772c]">
                             {juzAwal.name}
                           </p>
                         </div>
@@ -215,70 +328,94 @@ const SurahDetail = ({ surah, nomor }) => {
                     </div>
                   )}
 
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group">
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
-                            <span className="text-white font-bold font-arabic text-lg">
+                  <article className="rounded-[26px] border border-[#17382f]/8 bg-white/75 p-5 shadow-[0_8px_26px_rgba(23,56,47,.05)]">
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-10 items-center justify-center rounded-2xl bg-[#edf4f0]">
+                            <span className="font-arabic text-lg font-bold text-[#0f6b56]">
                               {s.nomor.toLocaleString("ar-SA", {
                                 useGrouping: false,
                               })}
                             </span>
                           </div>
                           <div>
-                            <p className="font-semibold text-gray-900">
+                            <p className="font-bold text-[#17382f]">
                               Ayat {s.nomor}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-xs text-[#718078]">
                               {detailSurah.nama_latin}
                             </p>
                           </div>
                         </div>
 
-                        <button
-                          onClick={() =>
-                            isMarked
-                              ? removeMark(detailSurah.nomor, s.nomor)
-                              : addMark(
-                                  detailSurah.nomor,
-                                  s.nomor,
-                                  s.ar,
-                                  detailSurah.nama_latin
-                                )
-                          }
-                          className={`p-3 rounded-xl transition-all duration-200 ${
-                            isMarked
-                              ? "text-yellow-500 bg-yellow-50 hover:bg-yellow-100"
-                              : "text-gray-400 hover:text-green-600 hover:bg-green-50"
-                          }`}
-                          title={isMarked ? "Hapus tandaan" : "Tandai ayat"}
-                        >
-                          <Bookmark
-                            className={`w-6 h-6 ${
-                              isMarked ? "fill-current" : ""
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => handleAyatAudio(s)}
+                            className="rounded-xl border border-[#17382f]/10 p-2.5 text-[#0f6b56]"
+                            aria-label={`Putar ayat ${s.nomor}`}
+                          >
+                            {playingAyat === s.nomor ? <Pause className="size-4" /> : <Play className="size-4" />}
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (isMarked) {
+                                removeMark(detailSurah.nomor, s.nomor);
+                                showToast("Tandaan dihapus");
+                              } else {
+                                addMark(detailSurah.nomor, s.nomor, s.ar, detailSurah.nama_latin);
+                                showToast("Ayat disimpan");
+                              }
+                            }}
+                            className={`rounded-xl border p-2.5 transition ${
+                              isMarked
+                                ? "border-[#d7a94a]/40 bg-[#f8f0dc] text-[#b7801d]"
+                                : "border-[#17382f]/10 text-[#8a948f]"
                             }`}
-                          />
-                        </button>
+                            aria-label={isMarked ? "Hapus tandaan" : "Tandai ayat"}
+                          >
+                            <Bookmark className={`size-4 ${isMarked ? "fill-current" : ""}`} />
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="bg-gray-50 rounded-2xl p-6 mb-6 border-r-4 border-green-500">
-                        <p className="text-2xl md:text-3xl leading-loose text-right font-arabic text-gray-800 tracking-wide">
+                      <div className="mt-5 rounded-[22px] bg-[#f3f0e7] px-5 py-7">
+                        <p
+                          dir="rtl"
+                          className="arabic-text text-right font-semibold text-[#17382f]"
+                          style={{ fontSize: `${arabicSize}px` }}
+                        >
                           {s.ar}
                         </p>
                       </div>
 
-                      <div className="mb-4 p-4 bg-emerald-50 rounded-xl border-l-4 border-emerald-500">
-                        <span className="font-medium text-emerald-800 tracking-wider">
+                      <div className="mt-4 border-l-2 border-[#d7a94a] pl-4">
+                        <p className="text-xs font-bold uppercase tracking-[.12em] text-[#b7801d]">Latin</p>
+                        <span className="mt-2 block text-sm font-medium leading-6 text-[#53645c]">
                           {HTMLReactParser(s.tr)}
                         </span>
                       </div>
 
-                      <div className="p-4 bg-blue-50 rounded-xl border-l-4 border-blue-500">
-                        <p className="text-gray-700 leading-relaxed">{s.idn}</p>
+                      <div className="mt-4 rounded-2xl bg-[#edf4f0] p-4">
+                        <p className="mb-2 text-xs font-bold uppercase tracking-[.12em] text-[#0f6b56]">Terjemahan</p>
+                        <p className="text-sm leading-6 text-[#53645c]">{s.idn}</p>
+                      </div>
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          onClick={() => handleCopy(s)}
+                          className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#17382f]/10 py-2.5 text-xs font-bold text-[#53645c]"
+                        >
+                          <Copy className="size-4" /> Salin
+                        </button>
+                        <button
+                          onClick={() => handleShare(s)}
+                          className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#17382f]/10 py-2.5 text-xs font-bold text-[#53645c]"
+                        >
+                          <Share2 className="size-4" /> Bagikan
+                        </button>
                       </div>
                     </div>
-                  </div>
+                  </article>
                 </div>
               );
             })}
@@ -289,19 +426,19 @@ const SurahDetail = ({ surah, nomor }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 p-4">
+    <div className="min-h-screen px-5 py-5">
       <SurahNavigation surah={surah} detailSurah={detailSurah} />
 
-      <div className="max-w-4xl mx-auto mb-8">
-        <div className="flex bg-white rounded-2xl shadow-sm border border-gray-100 p-2">
+      <div className="mb-4">
+        <div className="grid grid-cols-2 rounded-[22px] border border-[#17382f]/8 bg-white/75 p-1.5 shadow-[0_8px_26px_rgba(23,56,47,.05)]">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 px-6 py-3 text-sm font-semibold rounded-xl transition-all duration-200 ${
+              className={`rounded-2xl px-6 py-3 text-sm font-bold transition ${
                 activeTab === tab.key
-                  ? "bg-green-600 text-white shadow-lg transform scale-105"
-                  : "text-gray-600 hover:text-green-600 hover:bg-green-50"
+                  ? "bg-[#0f6b56] text-white"
+                  : "text-[#718078] hover:text-[#0f6b56] hover:bg-[#edf4f0]"
               }`}
             >
               {tab.label}
@@ -311,6 +448,7 @@ const SurahDetail = ({ surah, nomor }) => {
       </div>
 
       {tabs.find((tab) => tab.key === activeTab)?.content}
+      <Toast message={toast} />
     </div>
   );
 };

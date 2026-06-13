@@ -15,17 +15,17 @@ const latin = Inter({
 
 export const metadata = {
   title: {
-    template: '%s | Alquran',
-    default: 'Alquran',
+    template: '%s | Nur Quran',
+    default: 'Nur Quran',
   },
-  description: 'Alquran',
+  description: 'Teman ibadah harian untuk membaca, mendengar, dan menghayati Al-Quran.',
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang='en'>
+    <html lang='id'>
       <body
-        className={`${arabic.variable} ${latin.variable} antialiased bg-gradient-to-br from-green-50 to-blue-50`}
+        className={`${arabic.variable} ${latin.variable} antialiased`}
       >
         <MobileContainer>{children}</MobileContainer>
       </body>
